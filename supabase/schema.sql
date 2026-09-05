@@ -188,6 +188,14 @@ revoke insert, update, delete on public.posts     from anon, authenticated;
 revoke insert, update, delete on public.comments  from anon, authenticated;
 revoke insert, update, delete on public.reactions from anon, authenticated;
 
+-- 読み取りの権限は明示しておく。
+-- プロジェクト作成時の「Automatically expose new tables」の設定に関わらず
+-- 同じように動かすため（読める中身は上のポリシーが決める）。
+grant usage on schema public to anon, authenticated;
+grant select on public.posts     to anon, authenticated;
+grant select on public.comments  to anon, authenticated;
+grant select on public.reactions to anon, authenticated;
+
 -- ---------------------------------------------------------------------
 -- ストレージ（画像）
 -- ---------------------------------------------------------------------

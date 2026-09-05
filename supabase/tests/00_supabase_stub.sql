@@ -17,6 +17,6 @@ create table storage.objects (
   name text, owner uuid, created_at timestamptz default now()
 );
 grant usage on schema public, extensions, storage to anon, authenticated;
--- Supabase のデフォルト権限を模倣（新規テーブルに anon が全権を持つ状態）
-alter default privileges in schema public grant all on tables to anon, authenticated;
-alter default privileges in schema public grant all on sequences to anon, authenticated;
+-- 新しいテーブルに権限を自動で付けない、いちばん厳しい設定を再現する。
+-- （Supabase の「Automatically expose new tables」を切った状態に相当）
+-- この状態でも動くなら、どちらの設定でも動く。
