@@ -1,0 +1,17 @@
+# ローカル用の設定（公開したくない場合はこちらに置く）
+public/config.local.js
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# 一時ファイル
+node_modules/
+*.log
+
+# テストの生成物
+tests/browser/screenshots/
+tests/browser/node_modules/

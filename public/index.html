@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>変顔.com — みんなの変顔を投稿して、笑い合う場所</title>
+<meta name="description" content="ログイン不要。撮った変顔をそのまま投稿して、みんなでコメントし合える場所です。">
+<meta property="og:title" content="変顔.com">
+<meta property="og:description" content="みんなの変顔を投稿して、笑い合う場所">
+<meta property="og:type" content="website">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<script src="config.js"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="logo" href="#/" aria-label="変顔.com トップへ">
+      <span class="logo-face" aria-hidden="true">(・∀・)</span>
+      <span class="logo-text">変顔<span class="logo-tld">.com</span></span>
+    </a>
+    <button class="btn btn-primary btn-post" data-action="open-composer">
+      <span aria-hidden="true">＋</span> 変顔を投稿
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ================= 設定がまだのとき ================= -->
+  <section id="view-setup" class="wrap view" hidden>
+    <div class="panel">
+      <h1>もう少しで開店です</h1>
+      <p>このサイトは Supabase をデータの置き場所として使います。まだ接続先が設定されていません。</p>
+      <ol class="steps">
+        <li><a href="https://supabase.com/dashboard" target="_blank" rel="noopener">Supabase</a> でプロジェクトを作る</li>
+        <li>SQL Editor で <code>supabase/schema.sql</code> を実行する</li>
+        <li>Project Settings → API の <strong>Project URL</strong> と <strong>anon public</strong> キーを
+            <code>public/config.js</code> に書く（または GitHub の Secrets に登録する）</li>
+      </ol>
+      <p class="muted">詳しい手順は <code>README.md</code> にあります。</p>
+    </div>
+  </section>
+
+  <!-- ================= タイムライン ================= -->
+  <section id="view-timeline" class="view" hidden>
+    <div class="hero">
+      <div class="wrap">
+        <h1 class="hero-title">きょうも、いい顔してますね。</h1>
+        <p class="hero-lead">ログインは要りません。撮って、上げて、笑う。それだけの場所です。</p>
+        <button class="btn btn-primary btn-lg" data-action="open-composer">変顔を投稿する</button>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="tabs" role="tablist" aria-label="並び替え">
+        <button class="tab" role="tab" data-sort="new"  aria-selected="true">新着</button>
+        <button class="tab" role="tab" data-sort="hot"  aria-selected="false">今週の人気</button>
+        <button class="tab" role="tab" data-sort="best" aria-selected="false">殿堂入り</button>
+      </div>
+
+      <div id="grid" class="grid" aria-live="polite"></div>
+      <p id="timeline-empty" class="empty" hidden>まだ一枚もありません。最初の変顔になりませんか。</p>
+      <div class="center">
+        <button id="load-more" class="btn" hidden>もっと見る</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 投稿の詳細 ================= -->
+  <section id="view-post" class="wrap view" hidden>
+    <button class="btn btn-ghost back" data-action="back">← 一覧へ戻る</button>
+    <div id="post-detail"></div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><strong>変顔.com</strong> — 顔で笑わせる、それだけのサイト。</p>
+    <p class="muted small">
+      写真は投稿時にブラウザ内で縮小され、撮影場所などの Exif 情報は取り除かれます。<br>
+      他人が写った写真は、本人の同意を得てから投稿してください。
+      困る投稿は「通報」から知らせてください（3人集まると自動的に非表示になります）。
+    </p>
+  </div>
+</footer>
+
+<!-- ================= 投稿フォーム ================= -->
+<dialog id="composer" aria-labelledby="composer-title">
+  <form method="dialog" class="composer-form" id="composer-form">
+    <header class="composer-head">
+      <h2 id="composer-title">変顔を投稿</h2>
+      <button type="button" class="icon-btn" data-action="close-composer" aria-label="閉じる">✕</button>
+    </header>
+
+    <div class="composer-body">
+      <label class="dropzone" id="dropzone" tabindex="0">
+        <input type="file" id="file-input" accept="image/*" hidden>
+        <div class="dropzone-inner" id="dropzone-empty">
+          <span class="dropzone-face" aria-hidden="true">(´∀｀)</span>
+          <strong>写真を選ぶ / ここにドロップ</strong>
+          <span class="muted small">スマホならその場で撮影もできます・貼り付け(Ctrl+V)も可</span>
+        </div>
+        <img id="preview" alt="選んだ写真のプレビュー" hidden>
+      </label>
+      <p class="muted small" id="image-note" hidden></p>
+
+      <label class="field">
+        <span class="field-label">ひとこと <span class="muted small">(任意・140字まで)</span></span>
+        <textarea id="caption" maxlength="140" rows="2" placeholder="渾身の一発です"></textarea>
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span class="field-label">名前 <span class="muted small">(任意)</span></span>
+          <input type="text" id="nickname" maxlength="20" placeholder="名無しの変顔" autocomplete="nickname">
+        </label>
+        <label class="field">
+          <span class="field-label">削除キー <span class="muted small">(任意・4字以上)</span></span>
+          <input type="text" id="delete-key" minlength="4" maxlength="40" placeholder="空欄なら自動で作ります" autocomplete="off">
+        </label>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" id="consent" required>
+        <span>写っている人全員の同意があります。他人を傷つける目的では使いません。</span>
+      </label>
+
+      <p class="form-error" id="composer-error" hidden></p>
+    </div>
+
+    <footer class="composer-foot">
+      <button type="button" class="btn btn-ghost" data-action="close-composer">やめる</button>
+      <button type="submit" class="btn btn-primary" id="submit-post">投稿する</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- ================= 投稿完了 ================= -->
+<dialog id="done-dialog" aria-labelledby="done-title">
+  <div class="composer-form">
+    <header class="composer-head">
+      <h2 id="done-title">投稿しました</h2>
+      <button type="button" class="icon-btn" data-action="close-done" aria-label="閉じる">✕</button>
+    </header>
+    <div class="composer-body">
+      <p>削除キーはこちらです。このブラウザには自動で保存してあるので、同じ端末なら削除ボタンがそのまま出ます。</p>
+      <p class="key-box"><code id="done-key"></code></p>
+      <p class="muted small">別の端末から消したくなったときのために、控えておくと安心です。</p>
+    </div>
+    <footer class="composer-foot">
+      <button type="button" class="btn btn-primary" data-action="close-done">とじる</button>
+    </footer>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
