@@ -119,6 +119,19 @@ a { color: var(--link); }
   outline: 3px solid var(--pop); outline-offset: 2px;
 }
 
+/* --------------------------- お試しモードの帯 --------------------------- */
+
+.demo-note {
+  margin: 0;
+  padding: .55rem 1rem;
+  text-align: center;
+  font-size: .82rem;
+  line-height: 1.6;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-bottom: 2px solid var(--ink);
+}
+
 /* ------------------------------ ヒーロー ------------------------------ */
 
 .hero { padding: 3rem 0 2rem; text-align: center; }

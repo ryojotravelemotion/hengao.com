@@ -3,11 +3,10 @@
    Supabase に直接つなぐだけの、ビルド不要な素の JavaScript。
    ===================================================================== */
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/+esm';
-
 /* ------------------------------ 設定 ------------------------------ */
 
 const CONFIG = window.HENGAO_CONFIG || {};
+const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/+esm';
 const BUCKET = 'faces';
 const PAGE_SIZE = 24;
 const MAX_EDGE = 1400;        // 長辺をこの px まで縮める
@@ -642,15 +641,40 @@ function wireUp() {
   window.addEventListener('hashchange', route);
 }
 
-function start() {
+/** VS Code の Live Server などで手元から開いているか */
+function isLocalPreview() {
+  const host = location.hostname.replace(/^\[|\]$/g, '');
+  return ['localhost', '127.0.0.1', '::1', ''].includes(host);
+}
+
+/** お試しモードで開いていることを、画面の上に出しておく */
+function showDemoBanner() {
+  const note = h('p', { class: 'demo-note' },
+    'お試しモードです。投稿はこのブラウザの中だけに保存され、他の人には見えません。',
+    h('br'),
+    'みんなで使うには config.js に Supabase の接続先を書いてください。');
+  document.querySelector('.site-header').after(note);
+}
+
+async function start() {
   const { supabaseUrl, supabaseAnonKey } = CONFIG;
-  if (!supabaseUrl || !supabaseAnonKey) {
+
+  if (supabaseUrl && supabaseAnonKey) {
+    // 接続先が設定されているときだけ、Supabase の部品を読み込む
+    const { createClient } = await import(SUPABASE_JS);
+    supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  } else if (isLocalPreview()) {
+    // 接続先が未設定でも、手元でなら中身を触って確かめられるようにする
+    const { createDemoClient } = await import('./demo-backend.js');
+    supabase = createDemoClient();
+    showDemoBanner();
+  } else {
     showView('setup');
     return;
   }
-  supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+
   wireUp();
   route();
 }

@@ -61,8 +61,22 @@ await page.route('**/cdn.jsdelivr.net/**', (route) =>
   route.fulfill({ status: 200, contentType: 'text/javascript', body: MOCK }));
 
 // --------------------------------------------------------------- 未設定の画面
-await page.goto('http://localhost:4321/', { waitUntil: 'networkidle' });
-check('設定が未入力なら案内画面が出る', await page.locator('#view-setup').isVisible());
+// 公開先（localhost 以外）で接続先が未設定なら、設定手順の案内を出す
+const serveFromDisk = (route) => {
+  const path = decodeURIComponent(new URL(route.request().url()).pathname);
+  try {
+    const file = join(ROOT, path === '/' ? 'index.html' : path);
+    route.fulfill({
+      status: 200,
+      contentType: TYPES[extname(file)] ?? 'application/octet-stream',
+      body: readFileSync(file),
+    });
+  } catch { route.fulfill({ status: 404, body: 'not found' }); }
+};
+await page.route('http://hengao.example/**', serveFromDisk);
+await page.goto('http://hengao.example/', { waitUntil: 'networkidle' });
+check('公開先で設定が未入力なら案内画面が出る', await page.locator('#view-setup').isVisible());
+check('公開先ではお試しモードにならない', (await page.locator('.demo-note').count()) === 0);
 
 // --------------------------------------------------------------- 設定済みの画面
 // config.js を「設定済み」の内容に差し替える
@@ -223,6 +237,38 @@ await page.setViewportSize({ width: 390, height: 780 });
 await page.screenshot({ path: SHOTS + 'mobile.png' });
 
 check('コンソールエラーが出ていない', consoleErrors.length === 0, consoleErrors.join(' | '));
+
+// --------------------------------------------------------------- お試しモード
+// 接続先が未設定でも、手元（localhost）でなら中身を触れること
+const demo = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+const demoPage = await demo.newPage();
+const demoErrors = [];
+demoPage.on('console', (m) => { if (m.type() === 'error') demoErrors.push(m.text()); });
+demoPage.on('pageerror', (e) => demoErrors.push(`pageerror: ${e.message}`));
+
+await demoPage.goto('http://localhost:4321/', { waitUntil: 'networkidle' });
+check('手元で開くとお試しモードになる', await demoPage.locator('.demo-note').isVisible());
+check('お試しモードでも一覧が出る', await demoPage.locator('#view-timeline').isVisible());
+
+await demoPage.locator('[data-action="open-composer"]').first().click();
+await demoPage.setInputFiles('#file-input', {
+  name: 'hengao.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(bigImage),
+});
+await demoPage.waitForSelector('#preview:not([hidden])');
+await demoPage.locator('#caption').fill('お試しモードの投稿');
+await demoPage.locator('#consent').check();
+await demoPage.locator('#submit-post').click();
+await demoPage.waitForSelector('#done-dialog[open]', { timeout: 15000 });
+await demoPage.locator('#done-dialog [data-action="close-done"].btn').click();
+await demoPage.waitForTimeout(500);
+check('お試しモードで投稿できる', (await demoPage.locator('.card').count()) === 1);
+
+await demoPage.reload({ waitUntil: 'networkidle' });
+await demoPage.waitForTimeout(600);
+check('お試しモードの投稿はブラウザに残る',
+      (await demoPage.locator('.card-caption').first().textContent()) === 'お試しモードの投稿');
+check('お試しモードでコンソールエラーが出ていない', demoErrors.length === 0, demoErrors.join(' | '));
+await demo.close();
 
 await browser.close();
 server.close();

@@ -26,6 +26,7 @@
 | 並び替え | 新着・今週の人気・殿堂入り |
 | 自分で削除 | 投稿時に発行される削除キーで、あとから消せます |
 | 通報 | 3人から通報が集まると自動で非表示になります |
+| お試しモード | Supabase の設定前でも、手元で開けばそのまま動きます |
 
 ---
 
@@ -96,15 +97,31 @@ Settings → Pages → **Source** を **GitHub Actions** に変更します。
 
 ---
 
-## ローカルで動かす
+## 手元で開く
+
+**VS Code の Live Server で開く場合**
+
+1. このリポジトリを VS Code で開きます
+2. `public/index.html` を右クリック → **Open with Live Server**
+
+**コマンドで開く場合**
 
 ```bash
-# public/config.js に接続先を書いたうえで
-cd public && python3 -m http.server 8000
-# → http://localhost:8000
+cd public && python3 -m http.server 8000   # → http://localhost:8000
 ```
 
-`file://` で直接開くと ES モジュールが読み込めないので、簡易サーバ経由で開いてください。
+どちらでも構いませんが、`index.html` をダブルクリックして `file://` で開くのは避けてください。
+ブラウザの決まりで JavaScript の読み込みが止まります。
+
+### お試しモード
+
+Supabase の設定がまだでも、**手元（localhost / 127.0.0.1）で開いたときだけ**は
+そのまま投稿やコメントを試せます。画面の上に黄色い帯が出て、
+データはそのブラウザの中だけに保存されます（他の人には見えません）。
+インターネットに繋がっていなくても動きます。
+
+`public/config.js` に接続先を書けば、同じページが自動的に本番の動きに切り替わります。
+公開先（localhost 以外）では、お試しモードにはならず設定手順の案内が出ます。
 
 ## テスト
 
@@ -153,6 +170,7 @@ public/           サイト本体（このフォルダがそのまま公開さ�
   styles.css      見た目
   app.js          動き（Supabase とのやり取り全部）
   config.js       Supabase の接続先
+  demo-backend.js お試しモード（手元で設定なしに動かすとき用）
 supabase/
   schema.sql      データベースの定義。SQL Editor に貼るのはこれ
   tests/          スキーマのテスト
