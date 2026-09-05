@@ -51,6 +51,35 @@ jobs:
         if: vars.CUSTOM_DOMAIN != ''
         run: echo "${{ vars.CUSTOM_DOMAIN }}" > public/CNAME
 
+      # 検索エンジンへの案内。公開先が変わっても正しい URL になるよう、
+      # ここで組み立てる。
+      - name: サイトマップを作る
+        env:
+          CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          if [ -n "$CUSTOM_DOMAIN" ]; then
+            BASE="https://$CUSTOM_DOMAIN/"
+          else
+            BASE="https://$OWNER.github.io/$REPO/"
+          fi
+          TODAY=$(date -u +%Y-%m-%d)
+          cat > public/sitemap.xml <<XML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url>
+              <loc>$BASE</loc>
+              <lastmod>$TODAY</lastmod>
+              <changefreq>daily</changefreq>
+            </url>
+          </urlset>
+          XML
+          sed -i 's/^[[:space:]]*//' public/sitemap.xml
+          printf 'User-agent: *\nAllow: /\n\nSitemap: %ssitemap.xml\n' "$BASE" > public/robots.txt
+          echo "公開先: $BASE"
+          cat public/sitemap.xml public/robots.txt
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
