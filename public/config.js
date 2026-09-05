@@ -10,6 +10,7 @@
    --------------------------------------------------------------------- */
 
 window.HENGAO_CONFIG = {
+  // Project URL。https://xxxx.supabase.co の形（/rest/v1 などは付けない）
   supabaseUrl: "",
   supabaseAnonKey: "",
 };

@@ -82,9 +82,14 @@ check('公開先ではお試しモードにならない', (await page.locator('.
 // config.js を「設定済み」の内容に差し替える
 await page.route('**/config.js', (route) => route.fulfill({
   status: 200, contentType: 'text/javascript',
-  body: 'window.HENGAO_CONFIG = { supabaseUrl: "https://example.supabase.co", supabaseAnonKey: "anon-test-key" };',
+  // Project URL と間違えて REST のエンドポイントを貼った状態を再現する
+  body: 'window.HENGAO_CONFIG = { supabaseUrl: "https://example.supabase.co/rest/v1/", supabaseAnonKey: "anon-test-key" };',
 }));
 await page.goto('http://localhost:4321/', { waitUntil: 'networkidle' });
+
+check('Project URL を取り違えても接続先が直される',
+      (await page.evaluate(() => window.__clientArgs?.url)) === 'https://example.supabase.co',
+      await page.evaluate(() => window.__clientArgs?.url));
 
 await page.waitForSelector('.card');
 check('一覧に投稿が並ぶ', (await page.locator('.card').count()) === 3,

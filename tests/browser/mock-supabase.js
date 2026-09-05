@@ -114,7 +114,8 @@ const rpcs = {
   report_content() { return { data: true, error: null }; },
 };
 
-export function createClient() {
+export function createClient(url, key) {
+  window.__clientArgs = { url, key };
   db.uploads = db.uploads || [];
   window.__mockDb = db;
   return {

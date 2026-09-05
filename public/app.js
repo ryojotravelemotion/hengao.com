@@ -641,6 +641,22 @@ function wireUp() {
   window.addEventListener('hashchange', route);
 }
 
+/**
+ * Supabase の接続先を整える。
+ * 管理画面には似た URL が並んでいて、Project URL の代わりに
+ * API のエンドポイント（.../rest/v1 など）を貼ってしまいやすいので、
+ * その分を取り除いてから使う。
+ */
+function normalizeSupabaseUrl(url) {
+  const cleaned = String(url).trim()
+    .replace(/\/+$/, '')
+    .replace(/\/(rest|storage|auth|realtime|functions)\/v1$/, '');
+  if (cleaned !== String(url).trim()) {
+    console.warn(`接続先を ${cleaned} として扱います（Project URL 以外が指定されていました）`);
+  }
+  return cleaned;
+}
+
 /** VS Code の Live Server などで手元から開いているか */
 function isLocalPreview() {
   const host = location.hostname.replace(/^\[|\]$/g, '');
@@ -662,7 +678,7 @@ async function start() {
   if (supabaseUrl && supabaseAnonKey) {
     // 接続先が設定されているときだけ、Supabase の部品を読み込む
     const { createClient } = await import(SUPABASE_JS);
-    supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    supabase = createClient(normalizeSupabaseUrl(supabaseUrl), supabaseAnonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
   } else if (isLocalPreview()) {
