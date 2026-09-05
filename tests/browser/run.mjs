@@ -171,12 +171,45 @@ const bigImage = await page.evaluate(async () => {
 await page.setInputFiles('#file-input', {
   name: 'hengao.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(bigImage),
 });
-await page.waitForSelector('#preview:not([hidden])');
+await page.waitForSelector('#stage:not([hidden])');
 check('写真を選ぶと案内文がプレビューに置き換わる',
       (await page.locator('#preview').isVisible())
-      && !(await page.locator('#dropzone-empty').isVisible()));
+      && !(await page.locator('#dropzone').isVisible()));
 const note = await page.locator('#image-note').textContent();
-check('選んだ画像が長辺1400pxに縮小される', note.startsWith('1400×933'), note);
+check('選んだ画像が長辺1400pxに収まる', note.includes('1400×933'), note);
+
+// --- 切り抜き ---
+check('最初は「そのまま」が選ばれている',
+      (await page.locator('.ratio[data-ratio=""]').getAttribute('aria-pressed')) === 'true');
+check('「そのまま」では拡大の操作を出さない', !(await page.locator('#zoom-row').isVisible()));
+
+await page.locator('.ratio[data-ratio="1"]').click();
+await page.waitForTimeout(150);
+check('正方形を選ぶと拡大の操作が出る', await page.locator('#zoom-row').isVisible());
+check('正方形の見た目になる', await page.evaluate(() => {
+  const c = document.querySelector('#preview');
+  return Math.abs(c.width - c.height) <= 1;
+}));
+check('切り抜き後の大きさが案内に出る',
+      (await page.locator('#image-note').textContent()).includes('1400×1400'));
+
+// ドラッグで位置が動くこと（拡大していないと動く余地がないので先に拡大する）
+await page.locator('#zoom').fill('200');
+await page.waitForTimeout(120);
+// 1点だけ見ると単色の場所を引くことがあるので、見えている絵全体で比べる
+const canvasSnapshot = () => page.evaluate(() => document.querySelector('#preview').toDataURL());
+const beforeDrag = await canvasSnapshot();
+const box = await page.locator('#preview').boundingBox();
+await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+await page.mouse.down();
+await page.mouse.move(box.x + box.width / 2 - 120, box.y + box.height / 2, { steps: 8 });
+await page.mouse.up();
+await page.waitForTimeout(150);
+check('ドラッグで切り抜く位置が動く', (await canvasSnapshot()) !== beforeDrag);
+
+// 「そのまま」に戻して投稿の続きへ
+await page.locator('.ratio[data-ratio=""]').click();
+await page.waitForTimeout(120);
 
 // 同意チェック無しでは投稿できない（ブラウザ標準の検証で止まる）
 await page.locator('#caption').fill('テスト投稿です');
@@ -243,6 +276,30 @@ await page.screenshot({ path: SHOTS + 'mobile.png' });
 
 check('コンソールエラーが出ていない', consoleErrors.length === 0, consoleErrors.join(' | '));
 
+// --------------------------------------------------------------- 切り抜いて投稿
+await page.goto('http://localhost:4321/', { waitUntil: 'networkidle' });
+await page.waitForSelector('.card');
+await page.locator('[data-action="open-composer"]').first().click();
+await page.setInputFiles('#file-input', {
+  name: 'hengao.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(bigImage),
+});
+await page.waitForSelector('#stage:not([hidden])');
+await page.locator('.ratio[data-ratio="0.75"]').click();
+await page.locator('#caption').fill('縦長に切り抜いた投稿');
+await page.locator('#consent').check();
+await page.locator('#submit-post').click();
+await page.waitForSelector('#done-dialog[open]');
+const cropped = await page.evaluate(() =>
+  window.__rpcCalls.filter(([name]) => name === 'create_post').at(-1)[1]);
+check('選んだ形のまま投稿される',
+      Math.abs(cropped.p_width / cropped.p_height - 0.75) < 0.01,
+      `${cropped.p_width}×${cropped.p_height}`);
+check('切り抜いても長辺は1400以内',
+      Math.max(cropped.p_width, cropped.p_height) <= 1400,
+      `${cropped.p_width}×${cropped.p_height}`);
+await page.locator('#done-dialog [data-action="close-done"].btn').click();
+await page.waitForTimeout(300);
+
 // --------------------------------------------------------------- お試しモード
 // 接続先が未設定でも、手元（localhost）でなら中身を触れること
 const demo = await browser.newContext({ viewport: { width: 1200, height: 900 } });
@@ -259,7 +316,7 @@ await demoPage.locator('[data-action="open-composer"]').first().click();
 await demoPage.setInputFiles('#file-input', {
   name: 'hengao.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(bigImage),
 });
-await demoPage.waitForSelector('#preview:not([hidden])');
+await demoPage.waitForSelector('#stage:not([hidden])');
 await demoPage.locator('#caption').fill('お試しモードの投稿');
 await demoPage.locator('#consent').check();
 await demoPage.locator('#submit-post').click();

@@ -123,38 +123,89 @@ function generateDeleteKey() {
 
 /* ------------------------------ 画像処理 ------------------------------ */
 
-/**
- * 選ばれた画像を、長辺 MAX_EDGE の JPEG に描き直す。
- * canvas を経由するので、位置情報などの Exif は結果に残らない。
- */
-async function prepareImage(file) {
+/** 選ばれた写真を読み込む。位置情報などの Exif は、この後の描き直しで消える。 */
+async function decodeImage(file) {
   if (!file.type.startsWith('image/')) throw new Error('画像ファイルを選んでください');
   if (file.size > 25 * 1024 * 1024) throw new Error('写真が大きすぎます（25MBまで）');
-
-  let bitmap;
   try {
-    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    return await createImageBitmap(file, { imageOrientation: 'from-image' });
   } catch {
-    bitmap = await createImageBitmap(file);   // 古いブラウザ向け
+    return createImageBitmap(file);   // 古いブラウザ向け
+  }
+}
+
+/**
+ * いま切り抜かれている範囲を、元の写真の座標で返す。
+ * 比率が未指定なら写真そのまま。指定があれば、その形で最大まで取った枠を
+ * 拡大率で縮め、中心をはみ出さない位置に収める。
+ */
+function cropRect() {
+  const image = composer.bitmap;
+  if (!image) return null;
+  if (!composer.ratio) {
+    return { sx: 0, sy: 0, sw: image.width, sh: image.height };
   }
 
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
+  const baseWidth = Math.min(image.width, image.height * composer.ratio);
+  const baseHeight = baseWidth / composer.ratio;
+  const width = baseWidth / composer.zoom;
+  const height = baseHeight / composer.zoom;
 
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+  const centerX = clamp(composer.center.x * image.width, width / 2, image.width - width / 2);
+  const centerY = clamp(composer.center.y * image.height, height / 2, image.height - height / 2);
+
+  return { sx: centerX - width / 2, sy: centerY - height / 2, sw: width, sh: height };
+}
+
+/** 切り抜き後の画面表示を描き直す */
+function renderPreview() {
+  const canvas = $('#preview');
+  const rect = cropRect();
+  if (!rect) return;
+
+  const maxWidth = 520;
+  const maxHeight = Math.round(window.innerHeight * 0.4);
+  const scale = Math.min(1, maxWidth / rect.sw, maxHeight / rect.sh);
+  canvas.width = Math.max(1, Math.round(rect.sw * scale));
+  canvas.height = Math.max(1, Math.round(rect.sh * scale));
+
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(composer.bitmap, rect.sx, rect.sy, rect.sw, rect.sh,
+                0, 0, canvas.width, canvas.height);
+
+  const output = outputSize(rect);
+  $('#image-note').textContent =
+    `投稿される大きさ ${output.width}×${output.height}（位置情報などは削除されます）`;
+}
+
+/** 実際に投稿する大きさ。長辺を MAX_EDGE までに収める。 */
+function outputSize(rect) {
+  const scale = Math.min(1, MAX_EDGE / Math.max(rect.sw, rect.sh));
+  return {
+    width: Math.max(1, Math.round(rect.sw * scale)),
+    height: Math.max(1, Math.round(rect.sh * scale)),
+  };
+}
+
+/** いまの切り抜きで、送信用の JPEG を書き出す */
+async function exportImage() {
+  const rect = cropRect();
+  if (!rect) throw new Error('写真を選んでください');
+
+  const { width, height } = outputSize(rect);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close?.();
+  ctx.drawImage(composer.bitmap, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, width, height);
 
   const blob = await new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('画像を変換できませんでした'))),
+    canvas.toBlob((result) => (result ? resolve(result) : reject(new Error('画像を変換できませんでした'))),
       'image/jpeg', JPEG_QUALITY);
   });
-
   return { blob, width, height };
 }
 
@@ -465,17 +516,28 @@ async function renderPostView(postId) {
 
 /* ------------------------------ 投稿フォーム ------------------------------ */
 
-const composer = { file: null, prepared: null };
+const composer = {
+  bitmap: null,                 // 元の写真
+  ratio: null,                  // 切り抜く形（幅÷高さ）。null なら元のまま
+  zoom: 1,                      // 拡大率
+  center: { x: 0.5, y: 0.5 },   // 切り抜く位置（写真全体に対する割合）
+};
 
 function resetComposer() {
-  composer.file = null;
-  composer.prepared = null;
+  composer.bitmap?.close?.();
+  composer.bitmap = null;
+  composer.ratio = null;
+  composer.zoom = 1;
+  composer.center = { x: 0.5, y: 0.5 };
+
   $('#composer-form').reset();
-  $('#preview').hidden = true;
-  $('#preview').removeAttribute('src');
-  $('#dropzone-empty').hidden = false;
-  $('#image-note').hidden = true;
+  $('#stage').hidden = true;
+  $('#crop-tools').hidden = true;
+  $('#zoom-row').hidden = true;
+  $('#dropzone').hidden = false;
   $('#composer-error').hidden = true;
+  $('#zoom').value = '100';
+  $$('.ratio').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.ratio === '')));
   $('#submit-post').disabled = false;
   $('#submit-post').textContent = '投稿する';
 }
@@ -485,20 +547,73 @@ async function acceptFile(file) {
   const error = $('#composer-error');
   error.hidden = true;
   try {
-    const prepared = await prepareImage(file);
-    composer.prepared = prepared;
-    const preview = $('#preview');
-    preview.src = URL.createObjectURL(prepared.blob);
-    preview.hidden = false;
-    $('#dropzone-empty').hidden = true;
-    const note = $('#image-note');
-    note.textContent =
-      `${prepared.width}×${prepared.height} / ${(prepared.blob.size / 1024).toFixed(0)}KB に縮小しました（位置情報などは削除済み）`;
-    note.hidden = false;
+    const bitmap = await decodeImage(file);
+    composer.bitmap?.close?.();
+    composer.bitmap = bitmap;
+    composer.zoom = 1;
+    composer.center = { x: 0.5, y: 0.5 };
+    $('#zoom').value = '100';
+
+    $('#dropzone').hidden = true;
+    $('#stage').hidden = false;
+    $('#crop-tools').hidden = false;
+    updateCropControls();
+    renderPreview();
   } catch (err) {
     error.textContent = err.message;
     error.hidden = false;
   }
+}
+
+/** 切り抜きの操作欄の出し入れ。「そのまま」のときは動かす余地がない。 */
+function updateCropControls() {
+  const cropping = Boolean(composer.ratio);
+  $('#zoom-row').hidden = !cropping;
+  $('#preview').classList.toggle('draggable', cropping);
+}
+
+/** 写真をドラッグして切り抜く位置を動かす */
+function setUpCropDragging() {
+  const canvas = $('#preview');
+  let dragging = null;
+
+  canvas.addEventListener('pointerdown', (event) => {
+    if (!composer.ratio) return;
+    dragging = { x: event.clientX, y: event.clientY };
+    canvas.setPointerCapture(event.pointerId);
+    canvas.classList.add('grabbing');
+  });
+
+  canvas.addEventListener('pointermove', (event) => {
+    if (!dragging || !composer.bitmap) return;
+    const rect = cropRect();
+    const box = canvas.getBoundingClientRect();
+
+    // 画面上で動かした分を、元の写真の座標に読み替える
+    composer.center.x -= ((event.clientX - dragging.x) / box.width) * (rect.sw / composer.bitmap.width);
+    composer.center.y -= ((event.clientY - dragging.y) / box.height) * (rect.sh / composer.bitmap.height);
+    dragging = { x: event.clientX, y: event.clientY };
+    renderPreview();
+  });
+
+  const endDrag = () => { dragging = null; canvas.classList.remove('grabbing'); };
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+
+  $('#zoom').addEventListener('input', (event) => {
+    composer.zoom = Number(event.target.value) / 100;
+    renderPreview();
+  });
+
+  $$('.ratio').forEach((button) => button.addEventListener('click', () => {
+    composer.ratio = button.dataset.ratio ? Number(button.dataset.ratio) : null;
+    composer.zoom = 1;
+    composer.center = { x: 0.5, y: 0.5 };
+    $('#zoom').value = '100';
+    $$('.ratio').forEach((other) => other.setAttribute('aria-pressed', String(other === button)));
+    updateCropControls();
+    renderPreview();
+  }));
 }
 
 async function submitPost(event) {
@@ -507,7 +622,7 @@ async function submitPost(event) {
   const submit = $('#submit-post');
   error.hidden = true;
 
-  if (!composer.prepared) {
+  if (!composer.bitmap) {
     error.textContent = '写真を選んでください';
     error.hidden = false;
     return;
@@ -527,14 +642,16 @@ async function submitPost(event) {
   const deleteKey = typedKey || generateDeleteKey();
 
   submit.disabled = true;
-  submit.textContent = 'アップロード中…';
+  submit.textContent = '準備中…';
 
   try {
+    const prepared = await exportImage();
+    submit.textContent = 'アップロード中…';
     const now = new Date();
     const path = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${randomId()}.jpg`;
 
     const upload = await supabase.storage.from(BUCKET)
-      .upload(path, composer.prepared.blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+      .upload(path, prepared.blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
     if (upload.error) throw upload.error;
 
     submit.textContent = '投稿中…';
@@ -544,8 +661,8 @@ async function submitPost(event) {
       p_visitor: visitorId(),
       p_nickname: $('#nickname').value || null,
       p_caption: $('#caption').value || null,
-      p_width: composer.prepared.width,
-      p_height: composer.prepared.height,
+      p_width: prepared.width,
+      p_height: prepared.height,
     });
     if (rpcError) throw rpcError;
 
@@ -599,6 +716,7 @@ function wireUp() {
     if (action === 'open-composer') { resetComposer(); dialog.showModal(); }
     if (action === 'close-composer') { dialog.close(); resetComposer(); }
     if (action === 'close-done') $('#done-dialog').close();
+    if (action === 'pick-again') $('#file-input').click();
     // 直接この URL を開いた人が、外に出てしまわないように
     if (action === 'back') {
       if (history.length > 1) history.back();
@@ -608,20 +726,23 @@ function wireUp() {
 
   $('#composer-form').addEventListener('submit', submitPost);
   $('#file-input').addEventListener('change', (e) => acceptFile(e.target.files[0]));
+  setUpCropDragging();
 
   const dropzone = $('#dropzone');
   dropzone.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $('#file-input').click(); }
   });
-  ['dragenter', 'dragover'].forEach((type) => dropzone.addEventListener(type, (event) => {
+
+  const body = $('.composer-body');
+  ['dragenter', 'dragover'].forEach((type) => body.addEventListener(type, (event) => {
     event.preventDefault();
     dropzone.classList.add('dragging');
   }));
-  ['dragleave', 'drop'].forEach((type) => dropzone.addEventListener(type, (event) => {
+  ['dragleave', 'drop'].forEach((type) => body.addEventListener(type, (event) => {
     event.preventDefault();
     dropzone.classList.remove('dragging');
   }));
-  dropzone.addEventListener('drop', (event) => acceptFile(event.dataTransfer?.files?.[0]));
+  body.addEventListener('drop', (event) => acceptFile(event.dataTransfer?.files?.[0]));
 
   document.addEventListener('paste', (event) => {
     if (!dialog.open) return;

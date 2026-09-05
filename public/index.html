@@ -108,9 +108,31 @@
           <strong>写真を選ぶ / ここにドロップ</strong>
           <span class="muted small">スマホならその場で撮影もできます・貼り付け(Ctrl+V)も可</span>
         </div>
-        <img id="preview" alt="選んだ写真のプレビュー" hidden>
       </label>
-      <p class="muted small" id="image-note" hidden></p>
+
+      <div class="stage" id="stage" hidden>
+        <canvas id="preview" aria-label="選んだ写真のプレビュー"></canvas>
+      </div>
+
+      <div class="crop-tools" id="crop-tools" hidden>
+        <div class="ratio-tabs" role="group" aria-label="切り抜きの形">
+          <button type="button" class="ratio" data-ratio="" aria-pressed="true">そのまま</button>
+          <button type="button" class="ratio" data-ratio="1">正方形</button>
+          <button type="button" class="ratio" data-ratio="0.75">縦長</button>
+          <button type="button" class="ratio" data-ratio="1.3333">横長</button>
+        </div>
+
+        <label class="zoom-row" id="zoom-row" hidden>
+          <span class="field-label">大きさ</span>
+          <input type="range" id="zoom" min="100" max="400" step="1" value="100"
+                 aria-label="写真の拡大率">
+        </label>
+
+        <div class="crop-foot">
+          <p class="muted small" id="image-note"></p>
+          <button type="button" class="link-btn" data-action="pick-again">写真を選び直す</button>
+        </div>
+      </div>
 
       <label class="field">
         <span class="field-label">ひとこと <span class="muted small">(任意・140字まで)</span></span>

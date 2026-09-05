@@ -274,7 +274,16 @@ dialog::backdrop { background: rgba(30, 20, 10, .55); backdrop-filter: blur(2px)
   padding: .8rem 1rem; border-bottom: 2px solid var(--line);
 }
 .composer-head h2 { margin: 0; font-size: 1.1rem; }
-.composer-body { padding: 1rem; display: grid; gap: .9rem; overflow-y: auto; }
+/* 縦に狭い画面では、中身を潰さずダイアログ側をスクロールさせる。
+   グリッドだと行が縮められ、プレビューが下の操作欄に重なってしまう。 */
+.composer-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+  overflow-y: auto;
+}
+.composer-body > * { flex-shrink: 0; }
 .composer-foot {
   display: flex; justify-content: flex-end; gap: .6rem;
   padding: .8rem 1rem; border-top: 2px solid var(--line);
@@ -291,7 +300,49 @@ dialog::backdrop { background: rgba(30, 20, 10, .55); backdrop-filter: blur(2px)
   background: var(--accent); color: var(--accent-ink);
   padding: .3rem .8rem; border-radius: 999px; border: 2px solid var(--ink);
 }
-#preview { display: block; width: 100%; height: auto; max-height: 46vh; object-fit: contain; background: #000; }
+/* 切り抜きの操作まわり */
+
+.stage {
+  /* 枠を写真そのものの大きさに合わせる（横に黒い帯を出さない） */
+  align-self: center;
+  max-width: 100%;
+  background: var(--bg);
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+#preview {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  touch-action: none;          /* 指でドラッグしたときに画面が動かないように */
+}
+#preview.draggable { cursor: grab; }
+#preview.grabbing { cursor: grabbing; }
+
+.crop-tools { display: grid; gap: .6rem; }
+
+.ratio-tabs { display: flex; gap: .4rem; flex-wrap: wrap; }
+.ratio {
+  font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer;
+  border: 2px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--ink-soft); padding: .3rem .9rem;
+}
+.ratio:hover { border-color: var(--ink); color: var(--ink); }
+.ratio[aria-pressed="true"] {
+  background: var(--ink); color: var(--bg); border-color: var(--ink);
+}
+
+.zoom-row { display: flex; align-items: center; gap: .7rem; }
+.zoom-row input[type="range"] { flex: 1; accent-color: var(--pop); }
+
+.crop-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .8rem; flex-wrap: wrap;
+}
+.crop-foot p { margin: 0; }
 
 .key-box { text-align: center; }
 .key-box code {
