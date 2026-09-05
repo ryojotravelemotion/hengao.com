@@ -2,7 +2,8 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # 既定のブランチ名が変わっても動くように、両方を見ておく
+    branches: [main, claude/hengao-site-build-ngqb1p]
   workflow_dispatch:
 
 permissions:
