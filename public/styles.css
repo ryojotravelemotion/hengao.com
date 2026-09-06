@@ -143,7 +143,14 @@ a { color: var(--link); }
   content: ""; display: block; width: 92px; height: 8px; margin: .5rem auto 0;
   background: var(--accent); border-radius: 99px; transform: rotate(-1.5deg);
 }
-.hero-lead { margin: 1rem auto 1.5rem; max-width: 34rem; color: var(--ink-soft); }
+.hero-lead {
+  margin: 1rem auto 1.5rem;
+  max-width: 34rem;
+  color: var(--ink-soft);
+  /* 「場所で／す。」のように文節の途中で折り返さないようにする */
+  word-break: auto-phrase;
+  text-wrap: balance;
+}
 
 /* ------------------------------ タブ ------------------------------ */
 
