@@ -3,11 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>変顔.com — みんなの変顔を投稿して、笑い合う場所</title>
-<meta name="description" content="ログイン不要。撮った変顔をそのまま投稿して、みんなでコメントし合える場所です。">
-<meta property="og:title" content="変顔.com">
-<meta property="og:description" content="みんなの変顔を投稿して、笑い合う場所">
+<title>変顔.com｜みんなの変顔を投稿して笑い合う場所</title>
+<meta name="description" content="ログイン不要。撮った変顔をそのまま投稿して、みんなでコメントし合える場所です。ルッキズムに抗おう。">
+
+<!-- サイト名を検索エンジンや SNS に伝えるための情報。
+     公開先の URL は、独自ドメインを設定すると公開処理が書き換えます。 -->
+<link rel="canonical" href="https://ryojotravelemotion.github.io/hengao.com/">
+<meta property="og:site_name" content="変顔.com">
+<meta property="og:title" content="変顔.com｜みんなの変顔を投稿して笑い合う場所">
+<meta property="og:description" content="ログイン不要。撮って、上げて、笑う。それだけの場所です。">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://ryojotravelemotion.github.io/hengao.com/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "変顔.com",
+  "alternateName": ["変顔ドットコム", "hengao.com"],
+  "url": "https://ryojotravelemotion.github.io/hengao.com/",
+  "inLanguage": "ja",
+  "description": "ログイン不要で変顔を投稿し、コメントし合えるサイト。"
+}
+</script>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
 <script src="config.js"></script>
@@ -18,10 +36,12 @@
 
 <header class="site-header">
   <div class="wrap header-inner">
-    <a class="logo" href="#/" aria-label="変顔.com トップへ">
-      <span class="logo-face" aria-hidden="true">(・∀・)</span>
-      <span class="logo-text">変顔<span class="logo-tld">.com</span></span>
-    </a>
+    <h1 class="site-name">
+      <a class="logo" href="#/" aria-label="変顔.com トップへ">
+        <span class="logo-face" aria-hidden="true">(・∀・)</span>
+        <span class="logo-text">変顔<span class="logo-tld">.com</span></span>
+      </a>
+    </h1>
     <button class="btn btn-primary btn-post" data-action="open-composer">
       <span aria-hidden="true">＋</span> 変顔を投稿
     </button>
@@ -33,7 +53,7 @@
   <!-- ================= 設定がまだのとき ================= -->
   <section id="view-setup" class="wrap view" hidden>
     <div class="panel">
-      <h1>まだ設定が終わっていません</h1>
+      <h2>まだ設定が終わっていません</h2>
       <p>ページの表示はできていますが、投稿の保存先（Supabase）につながっていません。
          下の3つを済ませると、投稿とコメントが使えるようになります。</p>
       <ol class="steps">
@@ -52,7 +72,7 @@
   <section id="view-timeline" class="view" hidden>
     <div class="hero">
       <div class="wrap">
-        <h1 class="hero-title">きょうも、いい顔してますね。</h1>
+        <p class="hero-title">きょうも、いい顔してますね。</p>
         <p class="hero-lead">ログインは要りません。変顔を撮って、上げて、笑う。それだけの場所です。ルッキズムに抗おう。</p>
         <button class="btn btn-primary btn-lg" data-action="open-composer">変顔を投稿する</button>
       </div>

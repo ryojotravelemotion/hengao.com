@@ -497,7 +497,7 @@ async function renderPostView(postId) {
           width: post.width || undefined, height: post.height || undefined,
         })),
       h('div', { class: 'detail-body' },
-        post.caption && h('h1', { class: 'detail-caption' }, post.caption),
+        post.caption && h('h2', { class: 'detail-caption' }, post.caption),
         h('div', { class: 'detail-meta' },
           h('strong', {}, post.nickname),
           h('time', { datetime: post.created_at }, timeAgo(post.created_at)),

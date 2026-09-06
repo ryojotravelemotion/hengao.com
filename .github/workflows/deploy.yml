@@ -77,6 +77,8 @@ jobs:
           XML
           sed -i 's/^[[:space:]]*//' public/sitemap.xml
           printf 'User-agent: *\nAllow: /\n\nSitemap: %ssitemap.xml\n' "$BASE" > public/robots.txt
+          # index.html に書いてある公開先も、実際の公開先に合わせる
+          sed -i "s|https://$OWNER.github.io/$REPO/|$BASE|g" public/index.html
           echo "公開先: $BASE"
           cat public/sitemap.xml public/robots.txt
 
