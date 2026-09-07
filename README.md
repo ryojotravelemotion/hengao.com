@@ -1,4 +1,4 @@
-# 変顔.com
+# 変顔ドットコム
 
 自由に変顔を投稿して、みんなでコメントし合うためのサイトです。
 ログインは要りません。写真を選んで、ひとこと添えて、投稿するだけ。
@@ -77,8 +77,10 @@ Settings → Pages → **Source** を **GitHub Actions** に変更します。
 あとは `main` ブランチに push すれば
 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) が公開まで済ませます。
 
-### 4. 独自ドメイン「変顔.com」をつなぐ（任意）
+### 4. 独自ドメインをつなぐ（任意）
 
+サイト名は「変顔ドットコム」ですが、ドメインとして取るなら
+`hengao.com` か、日本語ドメインの `変顔.com` です。
 日本語ドメインは内部的には Punycode の **`xn--ursw68l.com`** として扱われます。
 
 1. リポジトリの Settings → Secrets and variables → Actions → **Variables** タブで
