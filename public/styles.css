@@ -86,10 +86,18 @@ a { color: var(--link); }
   font-size: 1.05rem; background: var(--accent); color: var(--accent-ink);
   padding: .2rem .5rem; border-radius: 999px; border: 2px solid var(--ink);
   transition: transform .15s ease;
+  white-space: nowrap;   /* 顔文字を途中で折り返さない */
 }
 .logo:hover .logo-face { transform: rotate(-8deg) scale(1.06); }
-.logo-text { font-size: 1.3rem; font-weight: 800; letter-spacing: .02em; }
+.logo-text { font-size: 1.3rem; font-weight: 800; letter-spacing: .02em; white-space: nowrap; }
 .logo-tld { font-size: .8rem; color: var(--ink-soft); font-weight: 700; }
+
+/* 幅の狭い端末では、サイト名を優先して顔文字を引っ込める */
+@media (max-width: 430px) {
+  .logo-face { display: none; }
+  .logo-text { font-size: 1.15rem; }
+  .btn-post { padding: .5rem .9rem; font-size: .92rem; }
+}
 
 /* ------------------------------ ボタン ------------------------------ */
 
@@ -107,7 +115,7 @@ a { color: var(--link); }
 .btn-lg { padding: .75rem 1.8rem; font-size: 1.05rem; }
 .btn-ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--ink-soft); }
 .btn-ghost:hover { background: var(--bg-soft); box-shadow: none; transform: none; }
-.btn-post { white-space: nowrap; }
+.btn-post { white-space: nowrap; flex: 0 0 auto; }
 
 .icon-btn {
   font: inherit; cursor: pointer; border: none; background: transparent;
